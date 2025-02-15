@@ -10,6 +10,7 @@ class GameEngine {
         this.camera = { x: 0, y: 0, width: this.canvas.width, height: this.canvas.height };
         this.uiElements = [];
         this.isPaused = false;
+        this.round = 1;
         this.initKeyboard();
     }
 
@@ -18,9 +19,9 @@ class GameEngine {
             if (e.key === 'p') {
                 this.isPaused = !this.isPaused;
                 if (this.isPaused) {
-                    this.showPauseMenu();
+                    document.getElementById('pauseMenu').style.display = 'block';
                 } else {
-                    this.hidePauseMenu();
+                    document.getElementById('pauseMenu').style.display = 'none';
                 }
             }
             this.keys[e.key] = true;
@@ -86,28 +87,10 @@ class GameEngine {
         this.uiElements.push(uiElement);
     }
 
-    showPauseMenu() {
-        document.getElementById('pauseMenu').style.display = 'block';
-    }
-
-    hidePauseMenu() {
-        document.getElementById('pauseMenu').style.display = 'none';
-    }
-
-    showGameOverMenu() {
-        document.getElementById('gameOverMenu').style.display = 'block';
-    }
-
-    hideGameOverMenu() {
-        document.getElementById('gameOverMenu').style.display = 'none';
-    }
-
-    showUpgradeMenu() {
+    nextRound() {
+        this.round++;
         document.getElementById('upgradeMenu').style.display = 'block';
-    }
-
-    hideUpgradeMenu() {
-        document.getElementById('upgradeMenu').style.display = 'none';
+        this.isPaused = true;
     }
 }
 
