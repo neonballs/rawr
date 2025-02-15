@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoot-em-up Game</title>
+    <script src="GameEngine.js"></script>
+    <script src="pixelArtHandler.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #gameCanvas {
+            border: 1px solid #000;
+        }
+        .menu {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: white;
+            border: 1px solid #000;
+            z-index: 10;
+        }
+        .button {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script>
+        window.onload = function() {
+            const game = new GameEngine('gameCanvas', 800, 600);
+            game.gravity = 0; // Disable gravity
+
+            const playerFrames = ['player_pixel.png'];
+            const enemyFrames = ['enemy.png'];
+            const wallFrames = ['wall.png'];
+
+            class Player extends Sprite {
+                constructor(x, y) {
+                    super(playerFrames, x, y, 50, 50, 10); // Using pixel art with multiple frames
+                    this.shootCooldown = 0;
+                    this.vx = 0;
+                    this.vy = 0;
+                    this.speed = 0.5;
+                    this.friction = 0.95;
+                    this.projectileSpeed = 10;
+                    this.spawnProtection = 300; // Spawn protection time in frames
+                }
+
+                update(keys, game) {
+                    if (keys['ArrowUp'] || keys['w']) this.vy -= this.speed;
+                    if (keys['ArrowDown'] || keys['s']) this.vy += this.speed;
+                    if (keys['ArrowLeft'] || keys['a']) this.vx -= this.speed;
+                    if (keys['ArrowRight'] || keys['d']) this.vx += this.speed;
+
+                    this.vx *= this.friction;
+                    this.vy *= this.friction;
+
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Boundaries
+                    if (this.x < 0) this.x = 0;
+                    if (this.y < 0) this.y = 0;
+                    if (this.x + this.width > game.canvas.width) this.x = game.canvas.width - this.width;
+                    if (this.y + this.height > game.canvas.height) this.y = game.canvas.height - this.height;
+
+                    if (keys[' '] && this.shootCooldown <= 0) {
+                        const dx = game.mouseX - this.x - this.width / 2;
+                        const dy = game.mouseY - this.y - this.height / 2;
+                        const angle = Math.atan2(dy, dx);
+                        const vx = Math.cos(angle) * this.projectileSpeed;
+                        const vy = Math.sin(angle) * this.projectileSpeed;
+                        game.addSpriteToLayer(new Projectile(this.x + this.width / 2, this.y + this.height / 2, vx, vy), game.projectileLayerIndex);
+                        this.shootCooldown = 20; // Cooldown period
+                    }
+
+                    if (this.shootCooldown > 0) {
+                        this.shootCooldown--;
+                    }
+
+                    // Update camera position to follow player
+                    game.setCameraPosition(this.x - game.camera.width / 2 + this.width / 2, this.y - game.camera.height / 2 + this.height / 2);
+
+                    // Update spawn protection timer
+                    if (this.spawnProtection > 0) {
+                        this.spawnProtection--;
+                    }
+                }
+
+                draw(context) {
+                    if (this.spawnProtection > 0) {
+                        context.globalAlpha = 0.5; // Make player semi-transparent during spawn protection
+                    }
+                    super.draw(context);
+                    context.globalAlpha = 1.0; // Reset transparency
+                }
+            }
+
+            class Projectile extends Sprite {
+                constructor(x, y, vx, vy) {
+                    super(['projectile.png'], x, y, 10, 10);
+                    this.vx = vx;
+                    this.vy = vy;
+                }
+
+                update(keys, game) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Remove projectile if it goes out of bounds
+                    if (this.x < 0 || this.x > game.canvas.width || this.y < 0 || this.y > game.canvas.height) {
+                        game.removeSpriteFromLayer(this, game.projectileLayerIndex);
+                    }
+
+                    // Check for collisions with enemies
+                    game.layers[game.enemyLayerIndex].forEach(enemy => {
+                        if (this.isCollidingWith(enemy)) {
+                            game.removeSpriteFromLayer(enemy, game.enemyLayerIndex);
+                            game.removeSpriteFromLayer(this, game.projectileLayerIndex);
+                        }
+                    });
+                }
+            }
+
+            class Enemy extends Sprite {
+                constructor(x, y, player) {
+                    super(enemyFrames, x, y, 50, 50, 10);
+                    this.player = player;
+                }
+
+                update(keys, game) {
+                    // Move towards the player
+                    const dx = this.player.x - this.x;
+                    const dy = this.player.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    this.vx = (dx / distance) * 2;
+                    this.vy = (dy / distance) * 2;
+
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Boundaries
+                    if (this.x < 0) this.x = 0;
+                    if (this.y < 0) this.y = 0;
+                    if (this.x + this.width > game.canvas.width) this.x = game.canvas.width - this.width;
+                    if (this.y + this.height > game.canvas.height) this.y = game.canvas.height - this.height;
+
+                    // Check for collision with player
+                    if (this.isCollidingWith(this.player) && this.player.spawnProtection <= 0) {
+                        game.showGameOverMenu();
+                        game.isPaused = true;
+                    }
+                }
+            }
+
+            class Wall extends Sprite {
+                constructor(x, y) {
+                    super(wallFrames, x, y, 50, 50);
+                }
+            }
+
+            game.addLayer(); // Background layer
+            game.projectileLayerIndex = game.addLayer(); // Layer for projectiles
+            const playerLayerIndex = game.addLayer(); // Layer for player
+            game.enemyLayerIndex = game.addLayer(); // Layer for enemies
+            const wallLayerIndex = game.addLayer(); // Layer for walls
+
+            const player = new Player(400, 300);
+            game.addSpriteToLayer(player, playerLayerIndex);
+
+            // Add some enemies
+            for (let i = 0; i < 5; i++) {
+                const enemy = new Enemy(Math.random() * 750, Math.random() * 300, player);
+                game.addSpriteToLayer(enemy, game.enemyLayerIndex);
+            }
+
+            // Add walls
+            for (let i = 0; i < 16; i++) {
+                game.addSpriteToLayer(new Wall(i * 50, 0), wallLayerIndex);
+                game.addSpriteToLayer(new Wall(i * 50, 550), wallLayerIndex);
+            }
+            for (let i = 1; i < 11; i++) {
+                game.addSpriteToLayer(new Wall(0, i * 50), wallLayerIndex);
+                game.addSpriteToLayer(new Wall(750, i * 50), wallLayerIndex);
+            }
+
+            // Track mouse position
+            game.mouseX = 0;
+            game.mouseY = 0;
+            game.canvas.addEventListener('mousemove', (e) => {
+                const rect = game.canvas.getBoundingClientRect();
+                game.mouseX = e.clientX - rect.left;
+                game.mouseY = e.clientY - rect.top;
+            });
+
+            // Add UI element for spawn protection timer
+            const spawnProtectionUI = new UIElement(10, 30, (context, x, y) => {
+                context.fillStyle = 'black';
+                context.font = '20px Arial';
+                context.fillText(`Spawn Protection: ${Math.ceil(player.spawnProtection / 60)}s`, x, y);
+            });
+            game.addUIElement(spawnProtectionUI);
+
+            // Upgrade menu logic
+            document.getElementById('upgradeSpeed').addEventListener('click', () => {
+                player.speed += 0.1;
+                game.hideUpgradeMenu();
+                game.isPaused = false;
+            });
+
+            document.getElementById('upgradeProjectileSize').addEventListener('click', () => {
+                // Assuming Projectile class can handle size upgrade logic
+                game.hideUpgradeMenu();
+                game.isPaused = false;
+            });
+
+            document.getElementById('upgradeMoneyMultiplier').addEventListener('click', () => {
+                // Assuming there is a money system
+                game.hideUpgradeMenu();
+                game.isPaused = false;
+            });
+
+            document.getElementById('upgradeProjectileSpeed').addEventListener('click', () => {
+                player.projectileSpeed += 1;
+                game.hideUpgradeMenu();
+                game.isPaused = false;
+            });
+
+            // Game over menu logic
+            document.getElementById('playAgain').addEventListener('click', () => {
+                document.location.reload();
+            });
+
+            document.getElementById('exitGame').addEventListener('click', () => {
+                // Assuming there is an exit logic
+                game.hideGameOverMenu();
+                game.isPaused = false;
+            });
+
+            game.run();
+        }
+    </script>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div id="pauseMenu" class="menu">
+        <h2>Paused</h2>
+        <button class="button" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'p'}))">Resume</button>
+    </div>
+
+    <div id="gameOverMenu" class="menu">
+        <h2>Game Over</h2>
+        <button id="playAgain" class="button">Play Again</button>
+        <button id="exitGame" class="button">Exit</button>
+    </div>
+
+    <div id="upgradeMenu" class="menu">
+        <h2>Upgrade Menu</h2>
+        <button id="upgradeSpeed" class="button">Upgrade Speed</button>
+        <button id="upgradeProjectileSize" class="button">Upgrade Projectile Size</button>
+        <button id="upgradeMoneyMultiplier" class="button">Upgrade Money Multiplier</button>
+        <button id="upgradeProjectileSpeed" class="button">Upgrade Projectile Speed</button>
+    </div>
+</body>
+</html>
