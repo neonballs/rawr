@@ -25,9 +25,11 @@
             left: 50%;
             transform: translate(-50%, -50%);
             padding: 20px;
-            background-color: white;
-            border: 1px solid #000;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 10px;
             z-index: 10;
+            text-align: center;
         }
         .button {
             display: block;
@@ -38,9 +40,21 @@
             border: none;
             cursor: pointer;
             text-align: center;
+            border-radius: 5px;
         }
         .button:hover {
             background-color: #0056b3;
+        }
+        .menu h2 {
+            margin-top: 0;
+        }
+        .upgrade-option {
+            margin: 10px 0;
+            text-align: left;
+        }
+        .upgrade-option span {
+            display: block;
+            margin-bottom: 5px;
         }
     </style>
     <script>
@@ -165,7 +179,7 @@
 
                     // Check for collision with player
                     if (this.isCollidingWith(this.player) && this.player.spawnProtection <= 0) {
-                        game.showGameOverMenu();
+                        document.getElementById('gameOverMenu').style.display = 'block';
                         game.isPaused = true;
                     }
                 }
@@ -222,25 +236,25 @@
             // Upgrade menu logic
             document.getElementById('upgradeSpeed').addEventListener('click', () => {
                 player.speed += 0.1;
-                game.hideUpgradeMenu();
+                document.getElementById('upgradeMenu').style.display = 'none';
                 game.isPaused = false;
             });
 
             document.getElementById('upgradeProjectileSize').addEventListener('click', () => {
                 // Assuming Projectile class can handle size upgrade logic
-                game.hideUpgradeMenu();
+                document.getElementById('upgradeMenu').style.display = 'none';
                 game.isPaused = false;
             });
 
             document.getElementById('upgradeMoneyMultiplier').addEventListener('click', () => {
                 // Assuming there is a money system
-                game.hideUpgradeMenu();
+                document.getElementById('upgradeMenu').style.display = 'none';
                 game.isPaused = false;
             });
 
             document.getElementById('upgradeProjectileSpeed').addEventListener('click', () => {
                 player.projectileSpeed += 1;
-                game.hideUpgradeMenu();
+                document.getElementById('upgradeMenu').style.display = 'none';
                 game.isPaused = false;
             });
 
@@ -251,7 +265,7 @@
 
             document.getElementById('exitGame').addEventListener('click', () => {
                 // Assuming there is an exit logic
-                game.hideGameOverMenu();
+                document.getElementById('gameOverMenu').style.display = 'none';
                 game.isPaused = false;
             });
 
@@ -275,10 +289,22 @@
 
     <div id="upgradeMenu" class="menu">
         <h2>Upgrade Menu</h2>
-        <button id="upgradeSpeed" class="button">Upgrade Speed</button>
-        <button id="upgradeProjectileSize" class="button">Upgrade Projectile Size</button>
-        <button id="upgradeMoneyMultiplier" class="button">Upgrade Money Multiplier</button>
-        <button id="upgradeProjectileSpeed" class="button">Upgrade Projectile Speed</button>
+        <div class="upgrade-option">
+            <span>Upgrade Speed</span>
+            <button id="upgradeSpeed" class="button">Upgrade</button>
+        </div>
+        <div class="upgrade-option">
+            <span>Upgrade Projectile Size</span>
+            <button id="upgradeProjectileSize" class="button">Upgrade</button>
+        </div>
+        <div class="upgrade-option">
+            <span>Upgrade Money Multiplier</span>
+            <button id="upgradeMoneyMultiplier" class="button">Upgrade</button>
+        </div>
+        <div class="upgrade-option">
+            <span>Upgrade Projectile Speed</span>
+            <button id="upgradeProjectileSpeed" class="button">Upgrade</button>
+        </div>
     </div>
 </body>
 </html>
